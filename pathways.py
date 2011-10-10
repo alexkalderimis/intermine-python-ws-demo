@@ -47,8 +47,8 @@ class PathwayDemo(object):
     	
 		query = service.new_query("Gene")\
 		               .select(h_org, h_sym, h_ds)\
-			       .where(h_org, "ONE OF", org_util.get_names())\
-			       .where("organism.name", "=", org_name)\
+		               .where(h_org, "ONE OF", org_util.get_names())\
+		               .where("organism.name", "=", org_name)\
 		               .where("symbol", "=", symbol)\
 		               .where(h_sym, "IS NOT NULL")
 
