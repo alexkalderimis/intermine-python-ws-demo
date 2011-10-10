@@ -61,29 +61,23 @@ class PathwayDemo(object):
  
 	def get_pathways(self, symbol, org_name):
 		service = self.services[org_name]
-		query = service.new_query()
-		query.add_view('Gene.symbol', 'Gene.pathways.name')
+		sym = "symbol"
+		pw = "pathways.name"
+		ds = 'Gene.pathways.dataSets.name'
+		org = "organism.name"
+		query = service.new_query("Gene").select(sym, org, pw)
 	
 		# YeastMine doesn't have pathway.dataSets, check model first
-		datasets_path = 'Gene.pathways.dataSets.name'
-		if self.is_path_in_model(org_name, datasets_path):
-			query.add_view(datasets_path)
+		if self.is_path_in_model(org_name, ds):
+			query.add_view(ds)
 			query.add_join('Gene.pathways.dataSets', 'OUTER')
 
-		query.add_sort_order('Gene.pathways.name', 'asc')
-		query.add_constraint('Gene.symbol', '=', symbol, 'A')
-		query.add_constraint("Gene.organism.name", "=", org_name, "B")
+		query.add_sort_order(pw, 'asc')
+		query.add_constraint(sym, '=', symbol)
+		query.add_constraint(org, "=", org_name)
 	
-		pathways = []
-		for row in query.results("tsv"):
-			cols = row.split('\t')
-			pathway = cols[1]
-			if len(cols) == 3:
-				# If we know the data source add it in brackets
-				pathway += ' (%s)' % cols[2].split(' ')[0]
-			pathways.append([pathway, org_name, symbol])
-
-		return pathways
+	        # Return a list of triples
+		return [(r[pw] + " (%s)" % r[ds] if len(r) == 3 else r[pw], r[org], r[sym]) for r in query.rows()]
 
 	def is_path_in_model(self, org, path):
 		service = self.services[org]	
