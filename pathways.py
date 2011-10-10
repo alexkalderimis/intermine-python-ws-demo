@@ -3,6 +3,7 @@
 from intermine.webservice import Service
 from intermine.webservice import ServiceError
 from collections import defaultdict
+from itertools import groupby, ifilter
 import org_util
 
 class PathwayDemo(object):
@@ -27,42 +28,35 @@ class PathwayDemo(object):
 	def find_gene(self, symbol, org_name):
 		service = self.services[org_name]
 
-		query = service.new_query()	
-		query.add_view("Gene.symbol", "Gene.primaryIdentifier", "Gene.name", "Gene.organism.name")
-		query.add_constraint("Gene", "LOOKUP", symbol)
-		query.add_constraint("Gene.organism.name", "=", org_name)
+		query = service.new_query("Gene")\	
+			       .select("symbol", "primaryIdentifier", "name", "organism.name")\
+		               .where("Gene", "LOOKUP", symbol)\
+		               .where("organism.name", "=", org_name)
 
-		genes = [row.to_l() for row in query.rows()]
-		return genes
+		return [row.to_l() for row in query.rows()]
 				
 
 	def get_homologs_for_gene(self, symbol, org_name):
 		# always use FlyMine for querying homologs
+		
+		h_sym = "homologues.homologue.symbol"
+		h_org = "homologues.homologue.organism.name"
+		h_ds  = "homologues.dataSets.name"
+		
 		service = self.services["Drosophila melanogaster"]
     	
-		query = service.new_query()
-		query.add_view(
-			"Gene.symbol", "Gene.primaryIdentifier", "Gene.homologues.homologue.symbol",
-			"Gene.homologues.homologue.primaryIdentifier",
-			"Gene.homologues.homologue.organism.name",
-			"Gene.homologues.dataSets.name"
-			)
-		query.add_constraint("Gene.homologues.homologue.organism.name", "ONE OF", org_util.get_names())
-		query.add_constraint("Gene.organism.name", "=", org_name)
-		query.add_constraint("Gene.symbol", "=", symbol)
+		query = service.new_query("Gene")\
+		               .select(h_org, h_sym, h_ds)\
+			       .where(h_org, "ONE OF", org_util.get_names())\
+			       .where("organism.name", "=", org_name)\
+		               .where("symbol", "=", symbol)\
+		               .where(h_sym, "IS NOT NULL")
 
-		homologs = defaultdict(lambda: defaultdict(list))
-		for row in query.results("tsv"):
-			cols = row.split('\t')
-			homolog_org = cols[4]
-			homolog_symbol = cols[2]
-			if homolog_symbol != '""':
-				if len(cols) == 6:
-					dataset = self.strip_suffix(cols[5])
-					homologs[homolog_org][homolog_symbol].append(dataset)
-				else:
-					homologs[homolog_org][homolog_symbol].append(None)
-
+		homologs = defaultdict(dict)		
+		
+		for org, g1 in groupby(query.rows(), lambda x: x[h_org]):
+			for sym, g2 in groupby(g1, lambda x: x[h_sym]):
+				homlogues[org][sym] = [r[h_ds] for r in g2]
 		return homologs
  
 	def get_pathways(self, symbol, org_name):
