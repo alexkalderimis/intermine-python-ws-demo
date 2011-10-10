@@ -67,9 +67,6 @@ class PathwayDemo(object):
         ds = 'Gene.pathways.dataSets.name'
         org = "organism.name"
         query = service.new_query("Gene").select(sym, org, pw)
-
-        if org_name == "Rattus norvegicus":
-            return []
     
         # YeastMine doesn't have pathway.dataSets, check model first
         if self.is_path_in_model(org_name, ds):
@@ -81,7 +78,7 @@ class PathwayDemo(object):
         query.add_constraint(org, "=", org_name)
     
         # Return a list of triples
-        return [[r[pw] + " (%s)" % r[ds] if len(r) == 4 else r[pw], r[org], r[sym]] for r in query.rows()]
+        return [[r[2] + " (%s)" % r[3] if len(r) == 4 else r[2], r[1], r[0]] for r in map(lambda x: x.split("\t"), query.results("tsv"))]
 
     def is_path_in_model(self, org, path):
         service = self.services[org]    
