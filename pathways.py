@@ -32,10 +32,7 @@ class PathwayDemo(object):
 		query.add_constraint("Gene", "LOOKUP", symbol)
 		query.add_constraint("Gene.organism.name", "=", org_name)
 
-		genes = []
-		for row in query.results('tsv'):
-			cols = row.split('\t')
-			genes.append(cols)
+		genes = [row.to_l() for row in query.rows()]
 		return genes
 				
 
